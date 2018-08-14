@@ -12,8 +12,6 @@ import (
 
 	"github.com/hashicorp/terraform/helper/hashcode"
 
-	"github.com/davecgh/go-spew/spew"
-
 	"github.com/hashicorp/hcl/hcl/printer"
 	"github.com/hashicorp/terraform/terraform"
 )
@@ -40,15 +38,16 @@ func main() {
 	var resouceFormats []ResouceFormart
 
 	for _, module := range state.Modules {
-		var resouceFormat ResouceFormart
-		resouceFormat.Attributes = make(map[string]interface{})
 		for name, resouce := range module.Resources {
+			var resouceFormat ResouceFormart
+			resouceFormat.Attributes = make(map[string]interface{})
+
 			resouceName := strings.Split(name, ".")
 			resouceFormat.Name = resouceName[0]
 			resouceFormat.Target = resouceName[1]
 
 			for key, val := range resouce.Primary.Attributes {
-				fmt.Printf("key:%#v\tvalue:%#v\n", key, val)
+				// fmt.Printf("key:%#v\tvalue:%#v\n", key, val)
 				if strings.Contains(key, ".") {
 					maps := strings.Split(key, ".")
 					//keyが存在しないときはmapを作成する
@@ -67,16 +66,17 @@ func main() {
 					resouceFormat.Attributes[key] = val
 				}
 			}
+			resouceFormats = append(resouceFormats, resouceFormat)
 		}
-		resouceFormats = append(resouceFormats, resouceFormat)
+
 	}
 
-	spew.Dump(resouceFormats)
+	//	spew.Dump(resouceFormats)
 
 	for _, resouceFormat := range resouceFormats {
 		builder := &ResouceBuilder{}
 		builder.Printer(resouceFormat)
-		fmt.Println(string(builder.Buffer.Bytes()))
+		//fmt.Println(string(builder.Buffer.Bytes()))
 		res, err := printer.Format(builder.Buffer.Bytes())
 		if err != nil {
 			log.Fatalln(err)
