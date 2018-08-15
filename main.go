@@ -71,12 +71,12 @@ func main() {
 
 	}
 
-	//	spew.Dump(resouceFormats)
+	// spew.Dump(resouceFormats)
 
 	for _, resouceFormat := range resouceFormats {
 		builder := &ResouceBuilder{}
 		builder.Printer(resouceFormat)
-		//fmt.Println(string(builder.Buffer.Bytes()))
+		// fmt.Println(string(builder.Buffer.Bytes()))
 		res, err := printer.Format(builder.Buffer.Bytes())
 		if err != nil {
 			log.Fatalln(err)
