@@ -16,67 +16,60 @@ import (
 	"github.com/hashicorp/terraform/terraform"
 )
 
-type ResouceFormart struct {
+type ResourcesFormat struct {
 	Name       string
-	Target     string
+	ID         string
 	Attributes map[string]interface{}
 }
-type ResouceBuilder struct {
+type ResourcesBuilder struct {
 	Buffer bytes.Buffer
 }
 
 func main() {
-	f, err := os.Open("./terraform.tfstate")
-	if err != nil {
-		log.Fatalln(err)
-	}
 	var state terraform.State
-	if err = json.NewDecoder(f).Decode(&state); err != nil {
+	if err := json.NewDecoder(os.Stdin).Decode(&state); err != nil {
 		log.Fatalln(err)
 	}
 
-	var resouceFormats []ResouceFormart
+	var resourcesFormats []ResourcesFormat
 
 	for _, module := range state.Modules {
-		for name, resouce := range module.Resources {
-			var resouceFormat ResouceFormart
-			resouceFormat.Attributes = make(map[string]interface{})
+		for name, resources := range module.Resources {
+			var resourcesFormat ResourcesFormat
+			resourcesFormat.Attributes = make(map[string]interface{})
+			resourcesName := strings.Split(name, ".")
+			resourcesFormat.Name = resourcesName[0]
+			resourcesFormat.ID = resourcesName[1]
+			for key, val := range resources.Primary.Attributes {
 
-			resouceName := strings.Split(name, ".")
-			resouceFormat.Name = resouceName[0]
-			resouceFormat.Target = resouceName[1]
-
-			for key, val := range resouce.Primary.Attributes {
-				// fmt.Printf("key:%#v\tvalue:%#v\n", key, val)
 				if strings.Contains(key, ".") {
 					maps := strings.Split(key, ".")
-					//keyが存在しないときはmapを作成する
-					if _, ok := resouceFormat.Attributes[maps[0]]; !ok {
-						resouceFormat.Attributes[maps[0]] = make(map[string]interface{})
+					if strings.Contains(maps[1], "#") || strings.Contains(maps[1], "%") {
+						continue
 					}
-					tmp, ok := resouceFormat.Attributes[maps[0]].(map[string]interface{})
+					if _, ok := resourcesFormat.Attributes[maps[0]]; !ok {
+						resourcesFormat.Attributes[maps[0]] = make(map[string]interface{})
+					}
+					tmp, ok := resourcesFormat.Attributes[maps[0]].(map[string]interface{})
 					if !ok {
 						fmt.Printf("%T", tmp)
 						log.Fatalln("cast error")
 					}
 					tmp[maps[1]] = val
-					resouceFormat.Attributes[maps[0]] = tmp
+					resourcesFormat.Attributes[maps[0]] = tmp
 
 				} else {
-					resouceFormat.Attributes[key] = val
+					resourcesFormat.Attributes[key] = val
 				}
 			}
-			resouceFormats = append(resouceFormats, resouceFormat)
+			resourcesFormats = append(resourcesFormats, resourcesFormat)
 		}
 
 	}
 
-	// spew.Dump(resouceFormats)
-
-	for _, resouceFormat := range resouceFormats {
-		builder := &ResouceBuilder{}
-		builder.Printer(resouceFormat)
-		// fmt.Println(string(builder.Buffer.Bytes()))
+	for _, resourcesFormat := range resourcesFormats {
+		builder := &ResourcesBuilder{}
+		builder.Build(resourcesFormat)
 		res, err := printer.Format(builder.Buffer.Bytes())
 		if err != nil {
 			log.Fatalln(err)
