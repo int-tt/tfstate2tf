@@ -79,12 +79,12 @@ func main() {
 
 }
 
-func (builder *ResouceBuilder) Printer(resouceFormat ResouceFormart) {
-	fmt.Fprintf(&builder.Buffer, "resource %q %q {\n", resouceFormat.Name, resouceFormat.Target)
-	builder.PrintAttributes(resouceFormat.Attributes)
+func (builder *ResourcesBuilder) Build(resourceFormat ResourcesFormat) {
+	fmt.Fprintf(&builder.Buffer, "resource %q %q {\n", resourceFormat.Name, resourceFormat.ID)
+	builder.PrintAttributes(resourceFormat.Attributes)
 	fmt.Fprintf(&builder.Buffer, "}\n")
 }
-func (builder *ResouceBuilder) PrintAttributes(attributes map[string]interface{}) {
+func (builder *ResourcesBuilder) PrintAttributes(attributes map[string]interface{}) {
 	for key, value := range attributes {
 
 		switch val := value.(type) {
@@ -97,7 +97,7 @@ func (builder *ResouceBuilder) PrintAttributes(attributes map[string]interface{}
 	}
 }
 
-func (builder *ResouceBuilder) PrintString(key string, value interface{}) {
+func (builder *ResourcesBuilder) PrintString(key string, value interface{}) {
 	head := []rune(key)[0]
 	switch {
 	case isLetter(head):
@@ -113,7 +113,7 @@ func (builder *ResouceBuilder) PrintString(key string, value interface{}) {
 	}
 }
 
-func (builder *ResouceBuilder) PrintMap(key string, attributes map[string]interface{}) {
+func (builder *ResourcesBuilder) PrintMap(key string, attributes map[string]interface{}) {
 	for k, value := range attributes {
 		if val, ok := value.(string); ok {
 			i, err := strconv.Atoi(k)
@@ -128,7 +128,7 @@ func (builder *ResouceBuilder) PrintMap(key string, attributes map[string]interf
 	builder.PrintAttributes(attributes)
 	fmt.Fprintf(&builder.Buffer, "}\n")
 }
-func (builder *ResouceBuilder) PrintTypeSet(key string, attributes map[string]interface{}) {
+func (builder *ResourcesBuilder) PrintTypeSet(key string, attributes map[string]interface{}) {
 	fmt.Fprintf(&builder.Buffer, "%s = [", key)
 	for k, v := range attributes {
 		if strings.Contains(k, "#") {
