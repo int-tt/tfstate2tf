@@ -32,7 +32,6 @@ func main() {
 	}
 
 	var resourcesFormats []ResourcesFormat
-
 	for _, module := range state.Modules {
 		for name, resources := range module.Resources {
 			var resourcesFormat ResourcesFormat
@@ -47,16 +46,17 @@ func main() {
 					if strings.Contains(maps[1], "#") || strings.Contains(maps[1], "%") {
 						continue
 					}
+
 					if _, ok := resourcesFormat.Attributes[maps[0]]; !ok {
 						resourcesFormat.Attributes[maps[0]] = make(map[string]interface{})
 					}
-					tmp, ok := resourcesFormat.Attributes[maps[0]].(map[string]interface{})
-					if !ok {
+					if tmp, ok := resourcesFormat.Attributes[maps[0]].(map[string]interface{}); ok {
+						tmp[maps[1]] = val
+						resourcesFormat.Attributes[maps[0]] = tmp
+					} else {
 						fmt.Printf("%T", tmp)
 						log.Fatalln("cast error")
 					}
-					tmp[maps[1]] = val
-					resourcesFormat.Attributes[maps[0]] = tmp
 
 				} else {
 					resourcesFormat.Attributes[key] = val
@@ -64,7 +64,6 @@ func main() {
 			}
 			resourcesFormats = append(resourcesFormats, resourcesFormat)
 		}
-
 	}
 
 	for _, resourcesFormat := range resourcesFormats {
@@ -79,25 +78,26 @@ func main() {
 
 }
 
-func (builder *ResourcesBuilder) Build(resourceFormat ResourcesFormat) {
-	fmt.Fprintf(&builder.Buffer, "resource %q %q {\n", resourceFormat.Name, resourceFormat.ID)
-	builder.PrintAttributes(resourceFormat.Attributes)
+func (builder *ResourcesBuilder) Build(resourcesFormat ResourcesFormat) {
+	fmt.Fprintf(&builder.Buffer, "resource %q %q {\n", resourcesFormat.Name, resourcesFormat.ID)
+	builder.printAttributes(resourcesFormat.Attributes)
 	fmt.Fprintf(&builder.Buffer, "}\n")
 }
-func (builder *ResourcesBuilder) PrintAttributes(attributes map[string]interface{}) {
+
+func (builder *ResourcesBuilder) printAttributes(attributes map[string]interface{}) {
 	for key, value := range attributes {
 
 		switch val := value.(type) {
 		case string:
-			builder.PrintString(key, val)
+			builder.printString(key, val)
 		case map[string]interface{}:
-			builder.PrintMap(key, val)
+			builder.printMap(key, val)
 		}
 
 	}
 }
 
-func (builder *ResourcesBuilder) PrintString(key string, value interface{}) {
+func (builder *ResourcesBuilder) printString(key string, value interface{}) {
 	head := []rune(key)[0]
 	switch {
 	case isLetter(head):
@@ -113,22 +113,23 @@ func (builder *ResourcesBuilder) PrintString(key string, value interface{}) {
 	}
 }
 
-func (builder *ResourcesBuilder) PrintMap(key string, attributes map[string]interface{}) {
+func (builder *ResourcesBuilder) printMap(key string, attributes map[string]interface{}) {
 	for k, value := range attributes {
 		if val, ok := value.(string); ok {
+			//map or list
 			i, err := strconv.Atoi(k)
 			if err == nil && i == hashcode.String(val) {
-				builder.PrintTypeSet(key, attributes)
+				builder.printTypeSet(key, attributes)
 				return
 			}
 		}
 	}
 	fmt.Fprintf(&builder.Buffer, "%s {\n", key)
 
-	builder.PrintAttributes(attributes)
+	builder.printAttributes(attributes)
 	fmt.Fprintf(&builder.Buffer, "}\n")
 }
-func (builder *ResourcesBuilder) PrintTypeSet(key string, attributes map[string]interface{}) {
+func (builder *ResourcesBuilder) printTypeSet(key string, attributes map[string]interface{}) {
 	fmt.Fprintf(&builder.Buffer, "%s = [", key)
 	for k, v := range attributes {
 		if strings.Contains(k, "#") {
